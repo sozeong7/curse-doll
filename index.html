@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>축시의 못</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Brush+Script&family=Nanum+Myeongjo:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{ --ink:#0b0907; --paper:#efe6cf; --blood:#c3241c; --dim:rgba(239,230,207,.55); --line:rgba(239,230,207,.18); }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;background:var(--ink);color:var(--paper);
+    font-family:"Nanum Myeongjo",serif;-webkit-user-select:none;user-select:none;touch-action:none;overscroll-behavior:none}
+  canvas{display:block;cursor:crosshair}
+  .vignette{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 45%,transparent 35%,rgba(0,0,0,.75) 100%)}
+  .flash{position:fixed;inset:0;pointer-events:none;background:var(--blood);opacity:0;mix-blend-mode:multiply}
+
+  .top{position:fixed;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:flex-start;padding:20px 24px;
+    pointer-events:none;opacity:0;transition:opacity .6s}
+  .top.on{opacity:1}
+  .count small{display:block;font-size:11px;color:var(--dim)}
+  .count b{font-size:36px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .reset{pointer-events:auto;display:flex;align-items:center;gap:8px;background:rgba(11,9,7,.5);border:1px solid var(--line);color:var(--paper);
+    font-family:inherit;font-weight:700;font-size:13px;padding:11px 16px 11px 14px;cursor:pointer;backdrop-filter:blur(6px);transition:border-color .2s}
+  .reset:hover{border-color:var(--paper)}
+  .reset:active{transform:scale(.96)}
+  .reset svg{width:16px;height:16px}
+  .actions{display:flex;gap:8px;pointer-events:auto}
+  .row{display:flex;gap:10px}
+  .btn.ghost{border-color:var(--line);color:var(--dim)}
+
+  .combo{position:fixed;right:24px;top:50%;transform:translateY(-50%);text-align:right;pointer-events:none;opacity:0;transition:opacity .25s}
+  .combo.on{opacity:1}
+  .combo b{display:block;font-size:clamp(48px,9vw,96px);font-weight:800;color:var(--blood);line-height:1;text-shadow:0 0 30px rgba(195,36,28,.5)}
+  .combo small{font-size:12px;color:var(--dim)}
+  .combo.bump b{animation:bump .18s ease-out}
+  @keyframes bump{0%{transform:scale(1.25)}100%{transform:scale(1)}}
+
+  .pop{position:fixed;left:0;top:0;pointer-events:none;font-family:"Nanum Brush Script",cursive;font-size:44px;color:var(--paper);
+    text-shadow:0 2px 0 #000,0 0 14px rgba(195,36,28,.8);white-space:nowrap;animation:popup .7s ease-out forwards}
+  .pop.big{font-size:72px;color:#ffd9c7}
+  @keyframes popup{0%{opacity:0;scale:.5}15%{opacity:1;scale:1.15}100%{opacity:0;scale:1;translate:0 -50px}}
+
+  .tools{position:fixed;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;gap:6px;padding:6px;
+    background:rgba(11,9,7,.6);border:1px solid var(--line);backdrop-filter:blur(8px);opacity:0;transition:opacity .6s;pointer-events:none}
+  .tools.on{opacity:1;pointer-events:auto}
+  .tool{width:68px;height:68px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:none;border:1px solid transparent;
+    color:var(--dim);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:color .15s,border-color .15s,background .15s}
+  .tool svg{width:26px;height:26px}
+  .tool:hover{color:var(--paper)}
+  .tool.on{color:var(--paper);border-color:var(--blood);background:rgba(195,36,28,.18)}
+  .tool:active{transform:scale(.94)}
+
+  .screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;
+    background:radial-gradient(ellipse at 50% 40%,rgba(20,14,10,.55),rgba(5,4,3,.92));text-align:center;padding:24px;transition:opacity .6s}
+  .screen.hide{opacity:0;pointer-events:none}
+  .screen .kicker{font-size:12px;color:var(--dim)}
+  .screen h1{font-size:clamp(44px,8vw,88px);font-weight:800;line-height:1}
+  .screen h1 em{font-style:normal;color:var(--blood)}
+  .screen p{font-size:14px;line-height:1.9;color:var(--dim);max-width:420px}
+  .slip{position:relative;width:min(300px,86vw)}
+  .slip input{width:100%;background:var(--paper);color:#1a1410;border:0;border-radius:0;padding:16px 18px;font-family:"Nanum Brush Script",cursive;
+    font-size:30px;text-align:center;outline:none;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+  .slip input::placeholder{color:rgba(26,20,16,.35)}
+  .slip::after{content:"";position:absolute;left:50%;top:-10px;width:6px;height:20px;background:#3a332d;transform:translateX(-50%)}
+  .btn{background:none;border:1px solid var(--paper);color:var(--paper);font-family:inherit;font-weight:700;font-size:15px;
+    padding:14px 36px;cursor:pointer;transition:background .2s,color .2s}
+  .btn:hover{background:var(--paper);color:var(--ink)}
+  .btn[disabled]{opacity:.3;pointer-events:none}
+  @media (max-width:600px){
+    .top{padding:14px 16px} .count b{font-size:28px}
+    .tool{width:56px;height:58px;font-size:11px} .tool svg{width:22px;height:22px}
+    .combo{right:14px}
+  }
+</style>
+</head>
+<body>
+<div class="vignette"></div>
+<div class="flash" id="flash"></div>
+
+<div class="top" id="top">
+  <div class="count"><small>때린 횟수</small><b id="count">0</b></div>
+  <div class="actions">
+  <button class="reset" id="rename" title="이름 바꾸기 (N)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/></svg>이름
+  </button>
+  <button class="reset" id="reset" title="새 인형 (R)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>새 인형
+  </button>
+  </div>
+</div>
+<div class="combo" id="combo"><b id="comboN">0</b><small>연타</small></div>
+
+<nav class="tools" id="tools">
+  <button class="tool on" data-tool="nail"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 4h10"/><path d="M12 4v13l-1 3"/></svg>못</button>
+  <button class="tool" data-tool="needle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="7" cy="6" r="2.4" fill="currentColor"/><path d="M8.5 7.5 19 19"/><circle cx="15" cy="5" r="1.8" fill="currentColor"/><path d="M14.5 6.8 13 20"/></svg>바늘</button>
+  <button class="tool" data-tool="hammer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="3" width="13" height="6" rx="1" fill="currentColor"/><path d="M11 9v12"/></svg>망치</button>
+  <button class="tool" data-tool="punch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2l2 5 5-2-2 5 5 2-5 2 2 5-5-2-2 5-2-5-5 2 2-5-5-2 5-2-2-5 5 2z"/></svg>주먹</button>
+  <button class="tool" data-tool="fire"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1 4 6 6 6 12a6 6 0 0 1-12 0c0-3 2-5 3-6 0 2 1 3 2 3-1-3 0-6 1-9z"/></svg>불</button>
+</nav>
+
+<section class="screen hide" id="renameBox">
+  <p>새로 적을 이름</p>
+  <div class="slip"><input id="wish2" maxlength="8" placeholder="예) 야근" autocomplete="off"></div>
+  <div class="row"><button class="btn ghost" id="renameCancel">취소</button><button class="btn" id="renameOk">붙이기</button></div>
+</section>
+
+<section class="screen" id="intro">
+  <div class="kicker">丑時 · 새벽 두 시</div>
+  <h1>축시의 <em>못</em></h1>
+  <p>털어내고 싶은 걸 적고, 마음껏 두들겨라.<br>연타할수록 시원하다. 너덜해지면 새 인형.</p>
+  <div class="slip"><input id="wish" maxlength="8" placeholder="예) 월요병" autocomplete="off"></div>
+  <button class="btn" id="start" disabled>불러오는 중</button>
+</section>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const $ = id => document.getElementById(id);
+const rand = (a,b) => a + Math.random()*(b-a);
+const UP = new THREE.Vector3(0,1,0);
+
+/* 도구별 연타 간격(ms) / 반응 세기 / 화면 흔들림 / 의성어 */
+const TOOLS = {
+  nail:   { rate:110, kick:.55, shake:.03,  words:['콱','퍽','푹','쾅'] },
+  needle: { rate:38,  kick:.15, shake:.006, words:['콕','쿡','콕콕','찔'] },
+  hammer: { rate:210, kick:1.4, shake:.11,  words:['쾅','콰직','뻑','우지끈'] },
+  punch:  { rate:120, kick:1.0, shake:.06,  words:['퍽','빡','퍼억','짝'] },
+  fire:   { rate:55,  kick:.08, shake:.004, words:['화르륵','타닥','지글'] },
+};
+let tool = 'nail';
+
+/* ---------- 장면 ---------- */
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x070504);
+scene.fog = new THREE.Fog(0x070504, 5, 11);
+
+const camera = new THREE.PerspectiveCamera(40, innerWidth/innerHeight, 0.05, 50);
+const camBase = new THREE.Vector3(0, 1.45, 4.6);
+camera.position.copy(camBase);
+camera.lookAt(0, 1.35, 0);
+
+scene.add(new THREE.HemisphereLight(0x5a6a88, 0x1a0f08, 0.35));
+const moon = new THREE.DirectionalLight(0x9fb2d6, 0.9);
+moon.position.set(-3, 6, 4); moon.castShadow = true; moon.shadow.mapSize.set(1024,1024);
+Object.assign(moon.shadow.camera, { left:-3, right:3, top:4, bottom:-2 });
+scene.add(moon);
+const candle = new THREE.PointLight(0xff8a3a, 9, 6, 1.6);
+candle.position.set(0.9, 0.35, 1.2); candle.castShadow = true; scene.add(candle);
+const rim = new THREE.PointLight(0xc3241c, 4, 5, 2);
+rim.position.set(-1.2, 2.4, -0.4); scene.add(rim);
+const fireLight = new THREE.PointLight(0xff6a1a, 0, 2.5, 2); scene.add(fireLight);
+
+function woodTexture(){
+  const c = document.createElement('canvas'); c.width = 512; c.height = 1024;
+  const g = c.getContext('2d'); g.fillStyle = '#2a1c12'; g.fillRect(0,0,512,1024);
+  for(let i=0;i<220;i++){ const x = Math.random()*512;
+    g.strokeStyle = `rgba(${10+Math.random()*30},${6+Math.random()*16},${2+Math.random()*8},${.25+Math.random()*.4})`;
+    g.lineWidth = 1+Math.random()*3; g.beginPath(); g.moveTo(x,0);
+    for(let y=0;y<=1024;y+=64) g.lineTo(x+Math.sin(y*.01+i)*6, y); g.stroke(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const trunk = new THREE.Mesh(new THREE.PlaneGeometry(6, 8), new THREE.MeshStandardMaterial({ map:woodTexture(), roughness:.95 }));
+trunk.position.set(0, 2, -1.6); trunk.receiveShadow = true; scene.add(trunk);
+const ground = new THREE.Mesh(new THREE.CircleGeometry(8, 48), new THREE.MeshStandardMaterial({ color:0x120c08, roughness:1 }));
+ground.rotation.x = -Math.PI/2; ground.position.y = -0.4; ground.receiveShadow = true; scene.add(ground);
+
+/* ---------- 재질·모양 ---------- */
+const ironMat = new THREE.MeshStandardMaterial({ color:0x7a7068, metalness:.8, roughness:.38 });
+const steelMat = new THREE.MeshStandardMaterial({ color:0xd8d8dc, metalness:1, roughness:.2 });
+const woodMat = new THREE.MeshStandardMaterial({ color:0x6b4a2e, roughness:.8 });
+const strawMat = new THREE.MeshStandardMaterial({ color:0xc9b27a, roughness:1 });
+const beadMats = [0xc3241c, 0xefe6cf, 0x1a1410].map(c => new THREE.MeshStandardMaterial({ color:c, roughness:.35 }));
+const G = {
+  nailShaft: new THREE.CylinderGeometry(0.014, 0.016, 0.5, 8).translate(0, 0.29, 0),
+  nailTip: new THREE.ConeGeometry(0.016, 0.08, 8).rotateX(Math.PI).translate(0, 0.04, 0),
+  nailHead: new THREE.CylinderGeometry(0.045, 0.04, 0.018, 16).translate(0, 0.545, 0),
+  needle: new THREE.CylinderGeometry(0.0035, 0.0035, 0.22, 5).translate(0, 0.11, 0),
+  bead: new THREE.SphereGeometry(0.018, 10, 8).translate(0, 0.225, 0),
+  hamHead: new THREE.BoxGeometry(0.13, 0.13, 0.32),
+  hamHandle: new THREE.CylinderGeometry(0.022, 0.026, 0.75, 8),
+  ring: new THREE.RingGeometry(0.6, 0.75, 40),
+  plane: new THREE.PlaneGeometry(1, 1),
+  strawBit: new THREE.BoxGeometry(0.008, 0.09, 0.008),
+};
+function makeNail(){
+  const g = new THREE.Group();
+  for(const geo of [G.nailShaft, G.nailTip, G.nailHead]){ const m = new THREE.Mesh(geo, ironMat); m.castShadow = true; g.add(m); }
+  return g; // 뾰족한 끝이 원점, +Y 쪽이 머리
+}
+function makeNeedle(){
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(G.needle, steelMat));
+  g.add(new THREE.Mesh(G.bead, beadMats[(Math.random()*beadMats.length)|0]));
+  return g;
+}
+function makeHammer(){
+  const g = new THREE.Group();
+  const head = new THREE.Mesh(G.hamHead, ironMat); head.castShadow = true; g.add(head);
+  const handle = new THREE.Mesh(G.hamHandle, woodMat); handle.castShadow = true;
+  handle.position.set(0.18, -0.34, 0.02); handle.rotation.z = 0.5; g.add(handle);
+  return g; // 머리 중심이 원점, 때리는 면은 -Z 쪽
+}
+const scorchMat = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+  const r = g.createRadialGradient(64,64,4,64,64,62);
+  r.addColorStop(0,'rgba(8,4,2,.95)'); r.addColorStop(.45,'rgba(25,10,4,.7)'); r.addColorStop(.7,'rgba(90,30,8,.25)'); r.addColorStop(1,'rgba(0,0,0,0)');
+  g.fillStyle = r; g.fillRect(0,0,128,128);
+  return new THREE.MeshBasicMaterial({ map:new THREE.CanvasTexture(c), transparent:true, depthWrite:false, polygonOffset:true, polygonOffsetFactor:-4 });
+})();
+
+/* ---------- 인형 ---------- */
+const PIVOT_Y = 2.55;
+const pivot = new THREE.Group(); pivot.position.set(0, PIVOT_Y, -0.25); scene.add(pivot);
+const dollRoot = new THREE.Group(); pivot.add(dollRoot);
+const hitTargets = [], modelMats = [];
+let dollHeight = 2;
+
+let slipMesh;
+function makeSlip(text){
+  const c = document.createElement('canvas'); c.width = 128; c.height = 384; const g = c.getContext('2d');
+  g.fillStyle = '#efe6cf'; g.fillRect(0,0,128,384);
+  g.strokeStyle = '#c3241c'; g.lineWidth = 4; g.strokeRect(8,8,112,368);
+  g.fillStyle = '#1a1410'; g.font = '64px "Nanum Brush Script"'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  const chars = [...(text||'미움')].slice(0,5), step = 340/chars.length;
+  chars.forEach((ch,i)=> g.fillText(ch, 64, 30 + step*(i+.5)));
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  if(slipMesh){ slipMesh.material.map.dispose(); slipMesh.material.map = t; slipMesh.material.needsUpdate = true; return; }
+  slipMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.66), new THREE.MeshStandardMaterial({ map:t, roughness:.9, side:THREE.DoubleSide }));
+  slipMesh.castShadow = true; dollRoot.add(slipMesh); hitTargets.push(slipMesh);
+}
+
+new GLTFLoader().load('doll.glb', gltf => {
+  const model = gltf.scene;
+  model.traverse(o => { if(o.isMesh){ o.castShadow = o.receiveShadow = true;
+    o.material = o.material.clone(); o.material.roughness = .95; o.material.emissive = new THREE.Color(0);
+    modelMats.push(o.material); hitTargets.push(o); } });
+  const box = new THREE.Box3().setFromObject(model);
+  model.scale.setScalar(2.25 / box.getSize(new THREE.Vector3()).y);
+  box.setFromObject(model);
+  const ctr = box.getCenter(new THREE.Vector3());
+  model.position.set(-ctr.x, -box.max.y, -ctr.z);
+  dollRoot.add(model);
+  box.setFromObject(model); dollHeight = box.max.y - box.min.y;
+  makeSlip('');
+  slipMesh.position.set(0, -dollHeight*0.42, box.max.z + 0.01);
+  const thread = new THREE.Mesh(new THREE.CylinderGeometry(0.006,0.006,0.12,6), new THREE.MeshStandardMaterial({ color:0xc3241c }));
+  thread.position.y = -0.03; pivot.add(thread);
+  $('start').disabled = false; $('start').textContent = '시작';
+}, undefined, err => { $('start').textContent = '모델을 불러오지 못함'; console.error(err); });
+
+/* ---------- 파티클 (짚 부스러기 / 불씨 / 연기) ---------- */
+function particleSystem(geo, mat, max){
+  const mesh = new THREE.InstancedMesh(geo, mat, max);
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); mesh.frustumCulled = false;
+  const P = Array.from({length:max}, () => ({ life:0, max:1, p:new THREE.Vector3(), v:new THREE.Vector3(), r:new THREE.Euler(), w:new THREE.Vector3(), s:1, grav:9.8, drag:0 }));
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), zero = new THREE.Matrix4().makeScale(0,0,0);
+  let next = 0;
+  scene.add(mesh);
+  return {
+    emit(pos, vel, o={}){
+      const p = P[next]; next = (next+1) % max;
+      p.life = p.max = o.life ?? 1.2; p.p.copy(pos); p.v.copy(vel);
+      p.r.set(rand(0,6),rand(0,6),rand(0,6)); p.w.set(rand(-15,15),rand(-15,15),rand(-15,15));
+      p.s = o.size ?? 1; p.grav = o.grav ?? 9.8; p.drag = o.drag ?? .5;
+    },
+    update(dt){
+      for(let i=0;i<max;i++){ const p = P[i];
+        if(p.life <= 0){ mesh.setMatrixAt(i, zero); continue; }
+        p.life -= dt; p.v.y -= p.grav*dt; p.v.multiplyScalar(1 - p.drag*dt); p.p.addScaledVector(p.v, dt);
+        if(p.p.y < -0.39){ p.p.y = -0.39; p.v.set(p.v.x*.3, -p.v.y*.15, p.v.z*.3); p.w.multiplyScalar(.3); }
+        p.r.x += p.w.x*dt; p.r.y += p.w.y*dt; p.r.z += p.w.z*dt;
+        const k = Math.min(1, p.life / p.max * 3) * p.s;
+        m4.compose(p.p, q.setFromEuler(p.r), sc.set(k,k,k)); mesh.setMatrixAt(i, m4);
+      }
+      mesh.instanceMatrix.needsUpdate = true;
+    },
+    clear(){ P.forEach(p => p.life = 0); }
+  };
+}
+const straw = particleSystem(new THREE.BoxGeometry(0.008, 0.11, 0.008), strawMat, 600);
+const embers = particleSystem(new THREE.IcosahedronGeometry(0.018, 0),
+  new THREE.MeshBasicMaterial({ color:0xffa040, blending:THREE.AdditiveBlending, transparent:true, depthWrite:false }), 400);
+const smoke = particleSystem(new THREE.IcosahedronGeometry(0.06, 1),
+  new THREE.MeshBasicMaterial({ color:0x2a2420, transparent:true, opacity:.35, depthWrite:false }), 160);
+
+/* ---------- 상태 ---------- */
+let phase = 'intro', total = 0, combo = 0, lastHitAt = 0;
+let damage = 0, burn = 0, hitGlow = 0, shake = 0;
+const stuck = [];   // 인형·나무에 붙은 것 (오래된 것부터 정리)
+const anims = [];   // 망치·충격파 같은 짧은 연출
+const swing = { ax:0, az:0, vx:0, vz:0 };
+const squash = { s:0, v:0 };
+const drop = { state:'idle', y:0, v:0 };
+const MAX_STUCK = 320;
+
+function addStuck(obj, parent){
+  parent.attach(obj); stuck.push(obj);
+  if(stuck.length > MAX_STUCK) stuck.shift().removeFromParent();
+}
+
+/* ---------- 소리 (합성) ---------- */
+let ac, noise;
+function audio(){
+  if(!ac){ ac = new (window.AudioContext||window.webkitAudioContext)();
+    noise = ac.createBuffer(1, ac.sampleRate, ac.sampleRate); const d = noise.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i] = Math.random()*2-1; }
+  return ac;
+}
+function burst({ dur=.15, freq=1200, type='lowpass', gain=.6, q=1 }){
+  const a = audio(), t = a.currentTime;
+  const n = a.createBufferSource(); n.buffer = noise;
+  const f = a.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
+  const g = a.createGain(); g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(.001, t + dur);
+  n.connect(f).connect(g).connect(a.destination); n.start(t, Math.random()*.5, dur);
+}
+function tone(f0, f1, dur, gain){
+  const a = audio(), t = a.currentTime, o = a.createOscillator(), g = a.createGain();
+  o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t+dur);
+  g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(.001, t+dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t+dur+.02);
+}
+const SFX = {
+  nail(){ burst({ dur:.18, freq:1100, gain:.8 }); tone(170, 45, .22, .6); },
+  needle(){ burst({ dur:.04, freq:4200, type:'bandpass', gain:.35, q:3 }); },
+  hammer(){ burst({ dur:.35, freq:700, gain:1.2 }); tone(110, 30, .4, 1); burst({ dur:.12, freq:3000, type:'highpass', gain:.3 }); },
+  punch(){ burst({ dur:.16, freq:500, gain:1 }); tone(90, 40, .18, .8); },
+  fire(){ burst({ dur:.07, freq:2500 + Math.random()*2500, type:'bandpass', gain:.18, q:2 }); },
+  air(){ burst({ dur:.12, freq:1500, type:'bandpass', gain:.12, q:.8 }); },
+};
+
+/* ---------- 입력: 누르고 있으면 연타, 손가락 여러 개도 OK ---------- */
+const pointers = new Map();
+const canvas = renderer.domElement;
+canvas.addEventListener('pointerdown', e => {
+  if(phase !== 'play') return;
+  try{ canvas.setPointerCapture(e.pointerId); }catch(_){}
+  const p = { x:e.clientX, y:e.clientY, last:performance.now() };
+  pointers.set(e.pointerId, p); strike(p.x, p.y);
+});
+canvas.addEventListener('pointermove', e => { const p = pointers.get(e.pointerId); if(p){ p.x = e.clientX; p.y = e.clientY; } });
+const lift = e => pointers.delete(e.pointerId);
+canvas.addEventListener('pointerup', lift); canvas.addEventListener('pointercancel', lift);
+addEventListener('contextmenu', e => e.preventDefault());
+
+document.querySelectorAll('.tool').forEach(b => b.addEventListener('click', () => {
+  tool = b.dataset.tool;
+  document.querySelectorAll('.tool').forEach(x => x.classList.toggle('on', x === b));
+}));
+addEventListener('keydown', e => {
+  if(phase !== 'play' || e.target.tagName === 'INPUT') return;
+  const i = '12345'.indexOf(e.key); if(i >= 0) document.querySelectorAll('.tool')[i].click();
+  if(e.key === 'r' || e.key === 'R') newDoll();
+  if(e.key === 'n' || e.key === 'N'){ e.preventDefault(); openRename(); }
+});
+
+/* ---------- 때리기 ---------- */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+
+function strike(x, y){
+  if(drop.state !== 'idle') return;
+  ndc.set(x/innerWidth*2-1, -(y/innerHeight)*2+1);
+  ray.setFromCamera(ndc, camera);
+  const dir = ray.ray.direction.clone();
+  const hit = ray.intersectObjects(hitTargets, false)[0];
+  const T = TOOLS[tool];
+  if(!hit){
+    const th = ray.intersectObject(trunk, false)[0];
+    if(th && (tool === 'nail' || tool === 'needle')) stickInto(th.point, dir, scene);
+    else if(th && tool === 'fire') fireAt(th.point, new THREE.Vector3(0,0,1), scene);
+    else SFX.air();
+    return;
+  }
+  const n = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+  if(n.dot(dir) > 0) n.negate();
+  const P = hit.point.clone();
+
+  if(tool === 'nail' || tool === 'needle') stickInto(P, dir, dollRoot);
+  else if(tool === 'hammer') hammerAt(P, n);
+  else if(tool === 'punch') punchAt(P, n);
+  else if(tool === 'fire') fireAt(P, n, dollRoot);
+  if(tool !== 'hammer') react(P, n, T);   // 망치는 내려찍는 순간에 반응
+
+  total++; $('count').textContent = total;
+  const now = performance.now();
+  combo = now - lastHitAt < 900 ? combo + 1 : 1; lastHitAt = now;
+  showCombo();
+  const every = tool === 'needle' ? 4 : tool === 'fire' ? 6 : 1;
+  if(combo % every === 0 || combo === 1) popWord(x, y, T.words[(Math.random()*T.words.length)|0], tool === 'hammer');
+}
+
+function react(P, n, T){
+  const k = T.kick;
+  kick(P, k);
+  squash.v += k * 2.2;
+  shake = Math.max(shake, T.shake);
+  hitGlow = Math.min(1, hitGlow + k*.35);
+  damage = Math.min(1, damage + k*.004);
+  const parts = T === TOOLS.needle ? 1 : T === TOOLS.fire ? 0 : Math.round(6 + k*14);
+  for(let i=0;i<parts;i++){
+    const v = n.clone().multiplyScalar(rand(1,3.5)*(.6+k*.6)).add(new THREE.Vector3(rand(-1.5,1.5), rand(-.5,2), rand(-1,1)));
+    straw.emit(P, v, { life:rand(1,2.2), size:rand(.5,1.3), grav:6, drag:1.2 });
+  }
+  if(k > .9){ const f = $('flash'); f.style.transition='none'; f.style.opacity=.3;
+    requestAnimationFrame(()=>{ f.style.transition='opacity .4s'; f.style.opacity=0; }); }
+}
+
+function stickInto(P, dir, parent){
+  const isNail = tool === 'nail';
+  const obj = isNail ? makeNail() : makeNeedle();
+  // 날아온 반대쪽에 위·옆으로 흩어, 사진처럼 지저분하게 꽂힌다
+  const axis = dir.clone().negate().add(new THREE.Vector3(rand(-.6,.6), rand(-.2,.7), rand(-.2,.2))).normalize();
+  const end = P.clone().addScaledVector(axis, -(isNail ? rand(.14,.26) : rand(.05,.11)));
+  const from = isNail ? .6 : .3;
+  obj.quaternion.setFromUnitVectors(UP, axis);
+  obj.position.copy(end).addScaledVector(axis, from);
+  scene.add(obj);
+  SFX[tool]();
+  anims.push({ t:0, dur: isNail ? .06 : .035,
+    update(k){ obj.position.copy(end).addScaledVector(axis, (1-k)*from); },
+    done(){ addStuck(obj, parent); } });
+}
+
+function hammerAt(P, n){
+  const h = makeHammer(); scene.add(h);
+  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,-1), n.clone().negate());
+  const qTilt = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0), -0.9);
+  const qId = new THREE.Quaternion();
+  const contact = P.clone().addScaledVector(n, 0.16);
+  const raised = contact.clone().addScaledVector(n, 0.55).add(new THREE.Vector3(.25, .45, 0));
+  let hit = false;
+  anims.push({ t:0, dur:.32, update(k){
+      if(k < .3){ const e = (k/.3)**2; h.position.lerpVectors(raised, contact, e);
+        h.quaternion.copy(q).multiply(qTilt.clone().slerp(qId, e)); }
+      else { if(!hit){ hit = true; SFX.hammer(); react(P, n, TOOLS.hammer); dent(P, n); }
+        const e = (k-.3)/.7; h.position.lerpVectors(contact, raised, e*e*.6);
+        h.scale.setScalar(Math.max(0.001, 1 - Math.max(0,(e-.5)*2))); }
+    }, done(){ h.removeFromParent(); } });
+}
+// 망치 자국: 짚이 터져 삐져나온다
+function dent(P, n){
+  for(let i=0;i<5;i++){
+    const s = new THREE.Mesh(G.strawBit, strawMat);
+    const a = n.clone().add(new THREE.Vector3(rand(-.9,.9), rand(-.9,.9), rand(-.4,.4))).normalize();
+    s.quaternion.setFromUnitVectors(UP, a); s.position.copy(P).addScaledVector(a, .03);
+    scene.add(s); addStuck(s, dollRoot);
+  }
+}
+
+function punchAt(P, n){
+  SFX.punch();
+  const ring = new THREE.Mesh(G.ring, new THREE.MeshBasicMaterial({ color:0xefe6cf, transparent:true, opacity:.6, depthWrite:false, side:THREE.DoubleSide }));
+  ring.position.copy(P).addScaledVector(n, .02); ring.lookAt(camera.position);
+  scene.add(ring);
+  anims.push({ t:0, dur:.28, update(k){ ring.scale.setScalar(.15 + k*.5); ring.material.opacity = .6*(1-k); },
+    done(){ ring.material.dispose(); ring.removeFromParent(); } });
+}
+
+let lastScorch = 0;
+function fireAt(P, n, parent){
+  SFX.fire();
+  burn = Math.min(1, burn + .04);
+  fireLight.position.copy(P).addScaledVector(n, .25); fireLight.intensity = Math.max(fireLight.intensity, 3);
+  for(let i=0;i<4;i++) embers.emit(P.clone().addScaledVector(n, .03),
+    n.clone().multiplyScalar(rand(.3,1)).add(new THREE.Vector3(rand(-.4,.4), rand(.8,2), rand(-.3,.3))),
+    { life:rand(.5,1.1), size:rand(.6,1.4), grav:-1.5, drag:2 });
+  if(Math.random() < .35) smoke.emit(P, new THREE.Vector3(rand(-.2,.2), rand(.4,.9), rand(-.1,.1)), { life:rand(1.2,2), size:rand(.6,1.4), grav:-.3, drag:.8 });
+  const now = performance.now();
+  if(now - lastScorch > 90){
+    lastScorch = now;
+    const s = new THREE.Mesh(G.plane, scorchMat);
+    s.scale.setScalar(rand(.12,.24)); s.position.copy(P).addScaledVector(n, .006);
+    s.lookAt(P.clone().add(n)); s.rotateZ(rand(0,6.28));
+    scene.add(s); addStuck(s, parent);
+  }
+}
+
+function kick(P, strength){
+  const local = pivot.worldToLocal(P.clone());
+  swing.vz += -local.x * 3.2 * strength + rand(-.6,.6)*strength;
+  swing.vx += -1.1 * strength;
+}
+
+/* ---------- 화면 연출 ---------- */
+function popWord(x, y, text, big){
+  const e = document.createElement('div'); e.className = 'pop' + (big ? ' big' : ''); e.textContent = text;
+  e.style.left = (x + rand(-30,30)) + 'px'; e.style.top = (y + rand(-50,-20)) + 'px';
+  e.style.rotate = rand(-18,18) + 'deg'; e.style.transform = 'translate(-50%,-50%)';
+  document.body.appendChild(e); setTimeout(() => e.remove(), 720);
+}
+const comboEl = $('combo'), comboN = $('comboN');
+function showCombo(){
+  if(combo < 5){ comboEl.classList.remove('on'); return; }
+  comboN.textContent = combo; comboEl.classList.add('on');
+  comboEl.classList.remove('bump'); void comboEl.offsetWidth; comboEl.classList.add('bump');
+}
+
+/* ---------- 새 인형: 끝 화면 없이 계속 ---------- */
+function newDoll(){
+  if(drop.state !== 'idle' || phase !== 'play') return;
+  drop.state = 'out'; drop.v = 0; SFX.air();
+}
+function clearDoll(){
+  stuck.forEach(o => o.removeFromParent()); stuck.length = 0;
+  straw.clear(); embers.clear(); smoke.clear();
+  damage = burn = hitGlow = combo = 0; comboEl.classList.remove('on');
+  swing.ax = swing.az = swing.vx = swing.vz = 0;
+}
+$('reset').addEventListener('click', newDoll);
+
+/* ---------- 게임 중 이름 바꾸기 ---------- */
+function openRename(){
+  if(phase !== 'play') return;
+  phase = 'rename'; pointers.clear();
+  $('wish2').value = $('wish').value;
+  $('renameBox').classList.remove('hide');
+  setTimeout(() => $('wish2').focus(), 50);
+}
+function closeRename(apply){
+  if(apply){ $('wish').value = $('wish2').value.trim(); makeSlip($('wish').value); }
+  $('renameBox').classList.add('hide'); phase = 'play';
+}
+$('rename').addEventListener('click', openRename);
+$('renameOk').addEventListener('click', () => closeRename(true));
+$('renameCancel').addEventListener('click', () => closeRename(false));
+$('wish2').addEventListener('keydown', e => { if(e.key === 'Enter') closeRename(true); if(e.key === 'Escape') closeRename(false); });
+
+function start(){
+  makeSlip($('wish').value.trim());
+  phase = 'play';
+  $('intro').classList.add('hide'); $('top').classList.add('on'); $('tools').classList.add('on');
+  audio().resume?.();
+}
+$('start').onclick = start;
+$('wish').addEventListener('keydown', e => { if(e.key === 'Enter' && !$('start').disabled) start(); });
+
+/* ---------- 루프 ---------- */
+const clock = new THREE.Clock();
+const bruise = new THREE.Color(0x4a2a20), white = new THREE.Color(1,1,1), glowC = new THREE.Color(), tint = new THREE.Color();
+function tick(){
+  const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime, now = performance.now();
+
+  if(phase === 'play') for(const p of pointers.values()){
+    if(now - p.last >= TOOLS[tool].rate){ p.last = now; strike(p.x + rand(-6,6), p.y + rand(-6,6)); }
+  }
+  if(combo && now - lastHitAt > 900){ combo = 0; comboEl.classList.remove('on'); }
+
+  for(let i=anims.length-1;i>=0;i--){ const a = anims[i]; a.t += dt/a.dur;
+    a.update(Math.min(a.t,1)); if(a.t >= 1){ a.done?.(); anims.splice(i,1); } }
+
+  straw.update(dt); embers.update(dt); smoke.update(dt);
+
+  // 흔들림 스프링
+  swing.vx += (-swing.ax * 18 - swing.vx * 2.4) * dt;
+  swing.vz += (-swing.az * 14 - swing.vz * 1.8) * dt;
+  swing.ax += swing.vx * dt; swing.az += swing.vz * dt;
+  if(Math.abs(swing.ax) > .5){ swing.ax = Math.sign(swing.ax)*.5; swing.vx *= -.3; }
+  if(Math.abs(swing.az) > .7){ swing.az = Math.sign(swing.az)*.7; swing.vz *= -.3; }
+  pivot.rotation.x = swing.ax + Math.sin(t*.7)*.012;
+  pivot.rotation.z = swing.az + Math.sin(t*.53)*.02 + (drop.state === 'out' ? drop.spin : 0);
+
+  // 찌그러짐 스프링
+  squash.v += (-squash.s * 260 - squash.v * 14) * dt; squash.s += squash.v * dt;
+  const sq = THREE.MathUtils.clamp(squash.s * .06, -.18, .18);
+  dollRoot.scale.set(1 + sq*.6, 1 - sq, 1 + sq*.6);
+
+  // 맞을수록 멍들고, 불에 그을린다
+  hitGlow *= Math.pow(.02, dt); burn = Math.max(0, burn - dt*.25);
+  fireLight.intensity *= Math.pow(.05, dt);
+  glowC.setRGB(.28*hitGlow + .32*burn, .02*hitGlow + .1*burn, 0);
+  tint.copy(white).lerp(bruise, damage);
+  for(const m of modelMats){ m.color.copy(tint); m.emissive.copy(glowC); }
+
+  // 새 인형: 떨어뜨리고 위에서 다시 내려온다
+  if(drop.state === 'out'){ drop.v -= 14*dt; drop.y += drop.v*dt; drop.spin = (drop.spin||0) + dt*2;
+    if(drop.y < -4.5){ clearDoll(); drop.state = 'in'; drop.y = 3.2; drop.v = 0; drop.spin = 0; } }
+  else if(drop.state === 'in'){ drop.v += (-drop.y*60 - drop.v*7)*dt; drop.y += drop.v*dt;
+    if(Math.abs(drop.y) < .003 && Math.abs(drop.v) < .03){ drop.y = 0; drop.state = 'idle'; } }
+  pivot.position.y = PIVOT_Y + drop.y;
+
+  candle.intensity = 8 + Math.sin(t*13)*.8 + Math.sin(t*29.7)*.6 + rand(-.3,.3);
+
+  shake *= Math.pow(.004, dt);
+  camera.position.set(camBase.x + rand(-1,1)*shake, camBase.y + rand(-1,1)*shake, camBase.z);
+  camera.lookAt(0, 1.35, 0);
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+tick();
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  camBase.z = innerWidth < innerHeight ? 6.6 : 4.6;
+});
+dispatchEvent(new Event('resize'));
+</script>
+</body>
+</html>
