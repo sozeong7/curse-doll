@@ -68,8 +68,8 @@
   .screen h1{font-size:clamp(52px,13vw,96px);font-weight:800;line-height:1;letter-spacing:-.03em}
   .screen h1 em{font-style:normal;color:var(--blood)}
   .screen p{font-size:14px;line-height:1.9;color:var(--dim);max-width:420px}
-  .screen .sub{font-size:clamp(17px,4.6vw,22px);font-weight:700;color:var(--paper);margin-top:-8px}
-  .talis{--h:min(46vh,400px);position:relative;height:var(--h);width:calc(var(--h)*.521);cursor:text;transform:rotate(-1.5deg);
+  .screen .sub{font-size:clamp(17px,4.6vw,22px);font-weight:700;color:var(--paper);line-height:1.3;margin-top:-16px}
+  .talis{--h:min(44vh,400px);--h:min(44dvh,400px);position:relative;height:var(--h);width:calc(var(--h)*.521);cursor:text;transform:rotate(-1.5deg);
     filter:drop-shadow(0 16px 22px rgba(0,0,0,.75)) drop-shadow(0 2px 3px rgba(0,0,0,.6))}
   .talis .paper{position:absolute;inset:0;background:#d8a830 center/100% 100% no-repeat}
   .talis::after{content:"";position:absolute;left:50%;top:-12px;width:8px;height:22px;background:#3a332d;transform:translateX(-50%);box-shadow:0 2px 4px #000}
@@ -90,7 +90,7 @@
   .btn.sealbtn:hover{background:#c3241c;color:#fff}
 
   /* ---------- 분위기 전환 버튼 ---------- */
-  .theme{position:fixed;top:max(18px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:5}
+  .theme{display:flex;gap:8px;margin-bottom:18px}
   .theme button{font-family:inherit;font-weight:800;font-size:13px;padding:8px 14px;border-radius:5px;cursor:pointer;
     background:rgba(11,9,7,.6);color:var(--dim);border:0;box-shadow:inset 0 0 0 2px #a51b15,inset 0 0 0 3.5px rgba(239,230,207,.35)}
   .theme button.on{background:#a51b15;color:#efe6cf;box-shadow:inset 0 0 0 2px #a51b15,inset 0 0 0 3.5px rgba(239,230,207,.7)}
@@ -107,7 +107,6 @@
   .cute .screen{background:var(--y)}
   .cute #renameBox{background:rgba(255,230,0,.97)}
   .cute .screen h1{font-family:"Black Han Sans";font-weight:400;color:var(--r);letter-spacing:-.02em;font-size:clamp(64px,17vw,124px)}
-  .cute #intro .sub{line-height:1.3;margin-top:-16px}
   .cute .screen h1 em{color:var(--r)}
   .cute .screen .sub{font-family:"Noto Sans KR";font-weight:900;color:var(--r);letter-spacing:-.02em}
   .cute .talis{filter:none;transform:none}
@@ -186,9 +185,8 @@
   <div class="row"><button class="btn ghost" id="renameCancel">취소</button><button class="btn sealbtn" id="renameOk">붙이기</button></div>
 </section>
 
-<div class="theme" id="theme"><button data-theme="scary">으스스하게</button><button data-theme="cute">귀엽게</button></div>
-
 <section class="screen" id="intro">
+  <div class="theme" id="theme"><button data-theme="scary">으스스하게</button><button data-theme="cute">귀엽게</button></div>
   <h1><em>못</em> 참겠다</h1>
   <p class="sub">오늘 나를 열받게 한 사람은?</p>
   <label class="talis"><span class="paper"></span><input id="wish" maxlength="6" autocomplete="off"><span class="v"></span></label>
@@ -750,7 +748,7 @@ function openRename(){
   if(phase !== 'play') return;
   phase = 'rename'; pointers.clear();
   $('wish2').value = $('wish').value; drawWish2();
-  $('renameBox').classList.remove('hide'); $('theme').classList.remove('hide');
+  $('renameBox').prepend($('theme')); $('renameBox').classList.remove('hide'); $('theme').classList.remove('hide');
   setTimeout(() => $('wish2').focus(), 50);
 }
 function closeRename(apply){
